@@ -4,3 +4,6 @@ version = "0.1.0"
 authors = ["Joshua Hawxwell <m@hawx.me>"]
 
 [dependencies]
+clap = "2"
+mpd = { git = "https://github.com/hawx/rust-mpd" }
+rand = "0.3"
