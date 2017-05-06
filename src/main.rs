@@ -77,7 +77,10 @@ fn shuffle_only(conn: &mut Client, songs: &mut Vec<Song>, only: i32) {
         songs
             .pop()
             .ok_or("Could not get song from list")
-            .and_then(|song| conn.push(song).map_err(|_| "Could not add song to queue"))
+            .and_then(|song| {
+                          conn.push(song)
+                              .map_err(|_| "Could not add song to queue")
+                      })
             .unwrap();
     }
 }
@@ -95,6 +98,7 @@ fn shuffle_idle(conn: &mut Client, songs: &mut Vec<Song>, buffer: i32) {
             shuffle_only(conn, songs, diff);
         }
 
-        conn.wait(&[Subsystem::Player]).expect("Failed to wait on mpd");
+        conn.wait(&[Subsystem::Player])
+            .expect("Failed to wait on mpd");
     }
 }
