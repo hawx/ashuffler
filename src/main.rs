@@ -29,10 +29,10 @@ fn main() {
         .get_matches();
 
     let mpd_url = matches.value_of("mpdUrl").unwrap_or("127.0.0.1:6600");
-    let mut conn = Client::connect(mpd_url).unwrap();
-    let mut rng = StdRng::new().unwrap();
+    let mut conn = Client::connect(mpd_url).expect("Could not connect to mpd");
+    let mut songs = conn.listall().expect("Could not get song list");
 
-    let mut songs = conn.listall().unwrap();
+    let mut rng = StdRng::new().expect("Could not shuffle song list");
     rng.shuffle(&mut songs);
 
     if songs.len() == 0 {
@@ -74,13 +74,17 @@ fn main() {
 
 fn shuffle_only(conn: &mut Client, songs: &mut Vec<Song>, only: i32) {
     for _ in 0..only {
-        conn.push(songs.pop().unwrap()).unwrap();
+        songs
+            .pop()
+            .ok_or("Could not get song from list")
+            .and_then(|song| conn.push(song).map_err(|_| "Could not add song to queue"))
+            .unwrap();
     }
 }
 
 fn shuffle_idle(conn: &mut Client, songs: &mut Vec<Song>, buffer: i32) {
     loop {
-        let status = conn.status().unwrap();
+        let status = conn.status().expect("Could not get mpd status");
 
         let queue_length = status.queue_len as i32;
         let current_pos = status.song.map(|x| x.pos as i32).unwrap_or(0);
@@ -88,11 +92,9 @@ fn shuffle_idle(conn: &mut Client, songs: &mut Vec<Song>, buffer: i32) {
         let diff = buffer - current_buffer;
 
         if diff > 0 {
-            for _ in 0..diff {
-                conn.push(songs.pop().unwrap()).unwrap();
-            }
+            shuffle_only(conn, songs, diff);
         }
 
-        conn.wait(&[Subsystem::Player]).unwrap();
+        conn.wait(&[Subsystem::Player]).expect("Failed to wait on mpd");
     }
 }
